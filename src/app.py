@@ -10,7 +10,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 import os
 from pathlib import Path
-import re
 
 
 app = FastAPI(title="Mergington High School API",
@@ -54,6 +53,7 @@ def get_activities():
     return activities
 
 
+
 @app.post("/activities/{activity_name}/signup")
 def signup_for_activity(activity_name: str, email: str):
     """Sign up a student for an activity"""
@@ -70,56 +70,24 @@ def signup_for_activity(activity_name: str, email: str):
     # Validate activity is not full
     if len(activity["participants"]) >= activity["max_participants"]:
         raise HTTPException(status_code=400, detail="Activity is full")
-    
 
     # Add student
     activity["participants"].append(email)
     return {"message": f"Signed up {email} for {activity_name}"}
 
 
+# New endpoint to unregister a participant
+from fastapi import Query
 
-with open('src/app.py', 'r') as f:
-    content = f.read()
+@app.delete("/activities/{activity_name}/unregister")
+def unregister_participant(activity_name: str, email: str = Query(...)):
+    """Remove a participant from an activity"""
+    if activity_name not in activities:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    activity = activities[activity_name]
+    if email not in activity["participants"]:
+        raise HTTPException(status_code=404, detail="Participant not found")
+    activity["participants"].remove(email)
+    return {"message": f"Removed {email} from {activity_name}"}
 
-new_activities = '''    "badminton": {
-        "name": "Badminton",
-        "description": "Racquet sport played on a court with a shuttlecock",
-        "participants": []
-    },
-    "skateboarding": {
-        "name": "Skateboarding",
-        "description": "Freestyle and street skateboarding tricks",
-        "participants": []
-    },
-    "sculpture": {
-        "name": "Sculpture",
-        "description": "3D art creation with various materials",
-        "participants": []
-    },
-    "painting": {
-        "name": "Painting",
-        "description": "Oil, acrylic, and watercolor painting classes",
-        "participants": []
-    },
-    "robotics": {
-        "name": "Robotics",
-        "description": "Build and program robots for competitions",
-        "participants": []
-    },
-    "astronomy": {
-        "name": "Astronomy",
-        "description": "Stargazing and celestial observation club",
-        "participants": []
-    }'''
 
-content = re.sub(
-    r'("chess":\s*\{[^}]+\}),(\s*\})',
-    r'\1,\n' + new_activities + r'\2',
-    content,
-    flags=re.DOTALL
-)
-
-with open('src/app.py', 'w') as f:
-    f.write(content)
-
-print("Added 6 new activities to src/app.py")
